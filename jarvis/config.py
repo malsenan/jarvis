@@ -1,0 +1,97 @@
+"""All tunable settings for Jarvis in one place.
+
+Everything the pipeline needs to know lives here so that changing behaviour
+never requires hunting through the code. Values marked TODO are the ones we
+have deliberately left unset (input/output device choice).
+"""
+
+from pathlib import Path
+
+# Root of the repository (this file lives in <repo>/jarvis/config.py).
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# --------------------------------------------------------------------------
+# Audio devices
+#
+# Device selection is BY NAME, never by index — indices shift when USB
+# devices are plugged in or PipeWire restarts. Give a case-insensitive
+# substring of the device name, e.g. "ATR4697" for a USB mic or "ALC897"
+# for the onboard analog jack.
+# None means "use the system default device".
+#
+# List the devices on this machine with:
+#     .venv/bin/python -m jarvis.audio_devices
+# --------------------------------------------------------------------------
+INPUT_DEVICE_NAME: str | None = None   # TODO: pick the mic (e.g. "ATR4697")
+OUTPUT_DEVICE_NAME: str | None = None  # TODO: pick the speaker (e.g. "ALC897")
+
+# --------------------------------------------------------------------------
+# Audio format
+#
+# 16 kHz mono 16-bit is what openWakeWord, Silero VAD and Whisper all expect,
+# so we capture in that format directly (PipeWire resamples for us).
+# One frame is 80 ms = 1280 samples — the frame size openWakeWord recommends.
+# --------------------------------------------------------------------------
+SAMPLE_RATE = 16_000
+FRAME_SAMPLES = 1_280
+
+# How much audio the sound card buffers, in seconds.
+#
+# PortAudio's own "high latency" setting on this machine is only ~35 ms. That
+# is not enough headroom: sounddevice refills the buffer from a Python
+# callback, so whenever something else loads the CPU (a video playing, a model
+# loading) the refill misses its deadline and the speaker plays the empty
+# buffer — you hear chopped, stuttering speech. A fifth of a second is
+# imperceptible for an assistant and survives a late refill comfortably.
+AUDIO_LATENCY_SECONDS = 0.2
+
+# --------------------------------------------------------------------------
+# Wake word (openWakeWord)
+# --------------------------------------------------------------------------
+WAKE_WORD_MODEL = "hey_jarvis"  # bundled openWakeWord model name
+WAKE_WORD_THRESHOLD = 0.5       # detection score above this fires the wake word
+
+# --------------------------------------------------------------------------
+# Speech capture (Silero VAD)
+#
+# After the wake word fires we record until the speaker goes quiet.
+# --------------------------------------------------------------------------
+VAD_SPEECH_THRESHOLD = 0.5        # VAD score above this counts as "speech"
+PRE_SPEECH_BUFFER_SECONDS = 0.5   # audio kept from just before speech starts
+SILENCE_TO_END_SECONDS = 0.7      # this much trailing silence ends the utterance
+MIN_UTTERANCE_SECONDS = 0.3       # shorter than this = a cough, discard it
+MAX_UTTERANCE_SECONDS = 15.0      # hard cap so a noisy room can't record forever
+WAIT_FOR_SPEECH_SECONDS = 6.0     # give up if nothing is said after the wake word
+
+# --------------------------------------------------------------------------
+# Speech-to-text (faster-whisper)
+#
+# Runs on CPU: faster-whisper's GPU path is CUDA-only and this machine has an
+# AMD card. base.en int8 on a desktop CPU transcribes a short utterance well
+# under a second, which is fine for this pipeline.
+# --------------------------------------------------------------------------
+STT_MODEL = "base.en"
+
+# --------------------------------------------------------------------------
+# LLM (Ollama)
+# --------------------------------------------------------------------------
+OLLAMA_MODEL = "qwen3:14b"
+OLLAMA_KEEP_ALIVE = "30m"   # keep the model in VRAM between questions
+OLLAMA_THINK = False        # disable qwen3's <think> reasoning for snappy replies
+OLLAMA_STARTUP_TIMEOUT_SECONDS = 30  # max wait for a server we spawned ourselves
+
+# The model must be FULLY in VRAM. Anything less means CPU offload and
+# unusable latency — the script refuses to run in that state.
+GPU_MIN_VRAM_FRACTION = 1.0
+
+SYSTEM_PROMPT = (
+    "You are Jarvis, a voice assistant. Your replies are spoken aloud by a "
+    "text-to-speech engine, so answer in plain conversational sentences: "
+    "no markdown, no bullet points, no code blocks. Keep answers short — "
+    "one to three sentences unless the user asks for detail."
+)
+
+# --------------------------------------------------------------------------
+# Text-to-speech (Piper)
+# --------------------------------------------------------------------------
+PIPER_VOICE_PATH = REPO_ROOT / "models" / "en_US-amy-medium.onnx"

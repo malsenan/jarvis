@@ -1,0 +1,21 @@
+# Jarvis PC-only voice assistant — Python 3.14 / Fedora 43
+#
+# NOTE: openwakeword is deliberately NOT in this file. Its Linux dependency
+# metadata demands tflite-runtime, which has no Python 3.14 wheels, so pip
+# would silently downgrade it to the ancient 0.4.0 release. build.sh installs
+# openwakeword==0.6.0 with --no-deps instead, and the packages below cover
+# everything it actually needs for the ONNX backend.
+
+ollama==0.6.2           # official Ollama python client (LLM chat)
+sounddevice==0.5.6      # PortAudio bindings: mic capture + speaker playback
+numpy==2.5.2            # audio buffers everywhere
+onnxruntime==1.29.0     # runs openwakeword + silero VAD models
+scipy==1.18.1           # openwakeword runtime dependency
+scikit-learn==1.9.0     # openwakeword runtime dependency
+requests==2.32.5        # openwakeword model downloader dependency
+tqdm==4.70.0            # openwakeword model downloader dependency
+faster-whisper==1.2.1   # speech-to-text (CTranslate2 whisper, CPU int8)
+piper-tts==1.7.0        # text-to-speech (local, fast on CPU)
+
+# --- development / testing ---
+pytest==8.4.2

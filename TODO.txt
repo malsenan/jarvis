@@ -1,0 +1,15 @@
+TODO - Basically a stand in for Jira tickets
+
+Format:
+Type (feature, bug, QOL, etc.) - Description or user story
+- Implementation idea(s)
+- Validation strategy
+- Subtasks or related tasks
+
+Investigation - Give agent mcp tool access; Take a look at https://github.com/jonigl/mcp-client-for-ollama and https://github.com/patruff/ollama-mcp-bridge and the problems each solves
+- Definition of done: 
+
+Investigation - Search through mcp registry and find the best tools today
+
+DONE
+

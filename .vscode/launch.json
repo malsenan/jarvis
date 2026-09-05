@@ -1,0 +1,92 @@
+{
+    // Every configuration uses the project's virtual environment explicitly
+    // ("python"), so debugging works no matter which interpreter VS Code has
+    // selected. Run ./build.sh first if .venv does not exist yet.
+    //
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // Runs the assistant itself. Needs the microphone and speaker, so
+            // it will make sound. Ctrl+C in the terminal (or Stop) to quit.
+            "name": "Jarvis: run assistant",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "jarvis.main",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            // The default test run: everything except the `slow` marker.
+            // Silent — never opens the microphone or speaker.
+            "name": "Tests: fast",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["-v"],
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            // Step into pytest and library code as well as our own.
+            "justMyCode": false
+        },
+        {
+            // Only the slow tests (the Piper -> Whisper round-trip). The -m
+            // here overrides the `-m "not slow"` default in pytest.ini.
+            "name": "Tests: slow",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["-v", "-m", "slow"],
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            // Runs whichever test file is open in the editor. Handy for
+            // setting a breakpoint in one test and hitting F5.
+            "name": "Tests: current file",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["-v", "${file}"],
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            // Prompts for a test name (or any pytest expression) and runs only
+            // the tests whose names match it, e.g. "gpu" or "wake_word".
+            "name": "Tests: by name (-k)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["-v", "-k", "${input:testNameFilter}"],
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testNameFilter",
+            "type": "promptString",
+            "description": "pytest -k expression (substring of the test name)",
+            "default": "gpu"
+        }
+    ]
+}
