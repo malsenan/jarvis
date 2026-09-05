@@ -20,7 +20,7 @@ import sounddevice as sd
 from openwakeword.vad import VAD
 
 from jarvis import config
-from jarvis.audio_devices import find_device
+from jarvis.audio_devices import describe_device, find_device
 from jarvis.ollama_llm import OllamaLLM, GpuNotUsedError
 from jarvis.speech_capture import SpeechRecorder
 from jarvis.speech_to_text import SpeechToText
@@ -61,8 +61,12 @@ def main() -> None:
         recorder = SpeechRecorder(vad=VAD())
 
         # Devices are chosen by name in config.py; None means system default.
+        # Print what we settled on — a wrong device is otherwise silent, and
+        # "default" on its own does not tell you which microphone that is.
         input_device = find_device(config.INPUT_DEVICE_NAME, "input")
         output_device = find_device(config.OUTPUT_DEVICE_NAME, "output")
+        print(f"Microphone: {describe_device(input_device, 'input')}")
+        print(f"Speaker:    {describe_device(output_device, 'output')}")
 
         # Give every stream we open a generous buffer. See the comment on
         # AUDIO_LATENCY_SECONDS — the default is small enough that a busy CPU

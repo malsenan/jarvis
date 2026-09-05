@@ -1,4 +1,4 @@
-"""Find audio devices by name instead of by index.
+"""Find audio devices by name instead of by index, and say which we picked.
 
 Device indices are not stable: they shift when a USB device is plugged in,
 when PipeWire restarts, or simply between boots. So callers give a
@@ -9,6 +9,8 @@ Run this module directly to see every device on the system:
 
     .venv/bin/python -m jarvis.audio_devices
 """
+
+import subprocess
 
 import sounddevice as sd
 
@@ -56,6 +58,33 @@ def find_device(name_fragment: str | None, kind: str) -> int | None:
               f"Using the first one.")
 
     return matches[0][0]
+
+
+def describe_device(index: int | None, kind: str) -> str:
+    """Name the device we are about to open, for printing at startup.
+
+    `index` is what find_device returned, so None means the system default.
+    PortAudio calls that device "default" no matter what is behind it, so
+    when we see that name we ask PipeWire which microphone or speaker it
+    currently points at — otherwise "default" tells you nothing.
+
+    Args:
+        index: sounddevice device index, or None for the system default.
+        kind: "input" or "output".
+    """
+    name = sd.query_devices(index, kind)["name"]
+    if name in ("default", "pipewire"):
+        return f"{name} -> {pipewire_default(kind)}"
+    return name
+
+
+def pipewire_default(kind: str) -> str:
+    """Ask PipeWire which microphone/speaker it is currently defaulting to."""
+    command = "get-default-source" if kind == "input" else "get-default-sink"
+    result = subprocess.run(
+        ["pactl", command], capture_output=True, text=True, check=True
+    )
+    return result.stdout.strip()
 
 
 if __name__ == "__main__":

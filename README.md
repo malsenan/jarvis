@@ -34,14 +34,22 @@ with no visible error, so we fail loudly instead.
 
 ## Configuration
 
-Everything tunable is in `jarvis/config.py`. The two deliberately unset values:
+Everything tunable is in `jarvis/config.py`. The two device settings:
 
 - `INPUT_DEVICE_NAME` — the microphone
 - `OUTPUT_DEVICE_NAME` — the speaker
 
-`None` means system default. Devices are matched **by name substring, never by
-index**, because indices shift when USB devices are plugged in or PipeWire
-restarts.
+Both default to `None`, meaning whatever the desktop has selected. Jarvis
+prints the device it opened at startup, resolving `default` through PipeWire
+so you see the actual microphone and speaker names:
+
+```
+Microphone: default -> alsa_input.usb-Conference_USB_microphone_ATR4697-USB-00.mono-fallback
+Speaker:    default -> bluez_output.E4_58_BC_C5_09_B2.1
+```
+
+Devices are matched **by name substring, never by index**, because indices
+shift when USB devices are plugged in or PipeWire restarts.
 
 ### Choosing the device names
 
@@ -71,6 +79,9 @@ If opening a raw `hw:X,Y` device fails with a sample-rate or "device busy"
 error, use `"pipewire"` as the device name instead — PipeWire mixes and
 resamples, and routes to whatever sink/source is selected in the desktop
 sound settings.
+
+**INPUT/OUTPUT CONFIGURED TO NONE WILL CHOOSE CURRENTLY SELECTED DESKTOP OUTPUT.**
+
 
 ### If the audio stutters
 

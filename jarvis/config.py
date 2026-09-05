@@ -15,15 +15,18 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 #
 # Device selection is BY NAME, never by index — indices shift when USB
 # devices are plugged in or PipeWire restarts. Give a case-insensitive
-# substring of the device name, e.g. "ATR4697" for a USB mic or "ALC897"
-# for the onboard analog jack.
-# None means "use the system default device".
+# substring of the device name, or None to use whatever the desktop has
+# selected as its default input/output. Jarvis prints the device it ended up
+# with at startup, so "default" is never a mystery.
+#
+# Note: a name that matches a raw ALSA "hw:" entry or a JACK entry will fail
+# with "Invalid sample rate" — neither can convert to SAMPLE_RATE below.
 #
 # List the devices on this machine with:
 #     .venv/bin/python -m jarvis.audio_devices
 # --------------------------------------------------------------------------
-INPUT_DEVICE_NAME: str | None = None   # TODO: pick the mic (e.g. "ATR4697")
-OUTPUT_DEVICE_NAME: str | None = None  # TODO: pick the speaker (e.g. "ALC897")
+INPUT_DEVICE_NAME: str | None = None   # None = default microphone
+OUTPUT_DEVICE_NAME: str | None = None  # None = default speaker
 
 # --------------------------------------------------------------------------
 # Audio format

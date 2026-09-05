@@ -40,7 +40,7 @@ import sounddevice as sd
 
 sys.path.insert(0, ".")  # allow running from the repo root without installing
 from jarvis import config
-from jarvis.audio_devices import find_device
+from jarvis.audio_devices import describe_device, find_device
 
 # The loopback check writes the recording here so you can listen to it again
 # or inspect it. It is overwritten by each run and is the only file any check
@@ -57,6 +57,11 @@ def check_devices():
     print(sd.query_devices())
     print(f"\nconfig INPUT_DEVICE_NAME  = {config.INPUT_DEVICE_NAME!r}")
     print(f"config OUTPUT_DEVICE_NAME = {config.OUTPUT_DEVICE_NAME!r}")
+    # The names above can be None; these are the devices they resolve to.
+    input_dev = find_device(config.INPUT_DEVICE_NAME, "input")
+    output_dev = find_device(config.OUTPUT_DEVICE_NAME, "output")
+    print(f"\nMicrophone: {describe_device(input_dev, 'input')}")
+    print(f"Speaker:    {describe_device(output_dev, 'output')}")
 
 
 def check_tone():

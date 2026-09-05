@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## THE MOST IMPORTANT RULE: ASK THE USER QUESTIONS IF ANYTHING IS VAGUE
+
 ## Project
 
 Jarvis is a local voice assistant that runs entirely on one Linux PC. It is a
