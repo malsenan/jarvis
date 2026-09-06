@@ -163,7 +163,6 @@ pytest and library code as well as `jarvis/`.
 ## Not yet decided / next steps
 
 - Input/output device names in `config.py`
-- Conversation history is unbounded within a run; fine for now, trim later
 - Barge-in (interrupting Jarvis mid-reply) — playback is blocking today
 - MCP server / agent tools — out of scope for this skeleton
 - Autostart (systemd **user** unit) — deferred deliberately

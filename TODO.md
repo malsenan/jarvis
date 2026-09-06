@@ -16,24 +16,6 @@
 
 ---
 
-## 2. Task - Trim conversation history
-
-- **User story**: History is unbounded within a run (already noted in the
-  README as "fine for now"). Once tool results start accumulating in the
-  message list, it stops being fine — a few searches will push earlier turns
-  out of the window.
-- **Why it's second**: prerequisite for the MCP work, not a follow-up to it.
-- **Implementation ideas**: Simplest thing that works — keep the system prompt
-  plus the last N turns. Consider dropping tool-result messages before dropping
-  user/assistant turns, since they are the bulkiest and least reusable.
-- **Validation strategy**: Unit test with a fake message list; assert the system
-  prompt survives trimming and the list stays under a token/'turn budget. No
-  model needed.
-- **Definition of done**: history has a bounded size; a test proves the bound
-  holds and the system prompt is never evicted.
-
----
-
 ## 3. Investigate - What model should I use and what should I set the context window to in order to achieve my goals? How do I know how much the agent can handle?
 
 - **User story**: I'm really bad with finances and I want my own personal financial advisor to keep me in line. I have already developed code that parses the financial data I download from my financial institutions and outputs readable data and graphs (matplotlib.pyplot). I am okay with feeding the agent only the output summary data, but if the agent is powerful enough and the raw data is small enough then I also want it to parse that to get the details of my spending habits and my current financial trajectory. I also want a local coding agent to help with any code I've developed and help me find and fix bugs, develop featues, etc. How much data in KB or in rows in a csv file or in lines of code, can I feed an ollama agent on my hardware and still expect positive results? Can a local agent help me with this project?
@@ -148,7 +130,7 @@
 - **Split this before starting**: (a) the SDK bridge + one read-only tool
   end-to-end, (b) the SearXNG stack, (c) the filesystem stack. Three PRs.
 - **Subtasks**: (was BLOCKED BY "can the agent go rogue" — unblocked, see ticket 8)
-- **Validation**: Unit tests should include spinning up docker containers and validating the agent's ability to use each tool, then releasing the resources after (deleting volumes, etc).
+- **Validation**: Unit tests should include spinning up docker (***or PODMAN***) containers and validating the agent's ability to use each tool, then releasing the resources after (deleting volumes, etc).
 - **CORRECTED sandboxing plan** (the `IPAddressDeny=any` advice was wrong — do
   not implement it):
     - `IPAddressAllow`/`IPAddressDeny` are BPF-cgroup based. If BPF can't be
@@ -173,6 +155,9 @@
   test asserting the dispatcher refuses unregistered tool names; the filesystem
   server proven networkless by a test that calls something requiring network
   and expects failure; containers torn down in fixtures.
+- **Other notes**: 
+    - ***IMPORTANT***: Find out if podman can be used in lieu of Docker, since podman hogs a lot less resources. 
+    - Once the agent can access tools and tool-result messages can be detected, find out how big they are and if implementing "drop tool-result messages first" is needed (hand-off from a previous ticket).
 
 ---
 
@@ -261,6 +246,15 @@
 ---
 
 ## v2.0
+
+**Task - Trim conversation history (was unbounded within a run)**
+- **Why**: `OllamaLLM._messages` grew forever and the whole list is re-sent on every question — so every reply slowed down as a session aged, and past `num_ctx` Ollama silently drops the OLDEST tokens, i.e. the system prompt: Jarvis would eventually start speaking markdown bullet points aloud with no visible cause. Short voice Q&A takes hours to get there, but MCP tool results (a single search dump is 2-4k tokens) would get there in a few queries — hence prerequisite for the MCP work.
+- **Implementation**: `config.HISTORY_MAX_TURNS = 20` + `OllamaLLM._trim_history()`, called at the end of `ask()`: keep the system prompt (always `_messages[0]`) plus the last 20 user/assistant exchanges, drop older ones. Messages append in pairs, so keeping an even count from the end always cuts at an exchange boundary. Trimming is OUR policy in OUR code — the point is to never reach Ollama's uncontrollable truncation. 20 exchanges ≈ 2-4k spoken tokens: ample memory, far under num_ctx=16384.
+- **Deliberately deferred**: no special-casing of tool-result messages (drop-tool-results-first) — none exist in the codebase yet; that policy belongs to the MCP ticket when the message shape is real.
+- **Validation**: Two new tests with the fake client: (1) 3× the cap of exchanges → list stays at 1+2×20 messages, system prompt intact and first, newest question kept / question 0 gone, boundary lands on a user message; (2) the longest request actually SENT to the client is ≤ 2+2×20 messages — the outgoing request is what counts against num_ctx. Fast suite: 31 passed.
+- **README**: removed the now-false "history is unbounded, fine for now" bullet.
+
+---
 
 **Bugfix - `num_ctx` was never set, so Jarvis ran at Ollama's 4096 default and truncated long input silently**
 - **Bug Cause**: Ollama defaults context to 4096 tokens and drops the oldest input past it with no error. `qwen3:14b` natively supports 32,768. Nothing in `jarvis/` ever passed `num_ctx`.

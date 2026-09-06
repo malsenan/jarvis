@@ -137,7 +137,18 @@ class OllamaLLM:
         )
         reply = response.message.content.strip()
         self._messages.append({"role": "assistant", "content": reply})
+        self._trim_history()
         return reply
+
+    def _trim_history(self) -> None:
+        """Drop the oldest exchanges once history exceeds HISTORY_MAX_TURNS.
+
+        The system prompt (always _messages[0]) is never dropped. Messages
+        arrive in user/assistant pairs, so keeping an even count from the end
+        always cuts at an exchange boundary."""
+        keep = 2 * config.HISTORY_MAX_TURNS
+        if len(self._messages) - 1 > keep:
+            self._messages = [self._messages[0]] + self._messages[-keep:]
 
     def shutdown(self) -> None:
         """Stop the `ollama serve` process if we were the ones who started it.

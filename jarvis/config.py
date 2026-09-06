@@ -102,6 +102,14 @@ GPU_MIN_VRAM_FRACTION = 1.0
 # check validates the context size we actually run with.
 OLLAMA_OPTIONS = {"num_ctx": 16384}
 
+# How many question/answer exchanges to keep as conversation memory. Older
+# exchanges are dropped (the system prompt never is). Without a cap the
+# history grows until it crosses num_ctx, where Ollama silently truncates
+# the OLDEST tokens — i.e. the system prompt — and every reply slows down,
+# since the whole history is re-processed on each question. 20 exchanges of
+# spoken Q&A is roughly 2-4k tokens: plenty of memory, well under num_ctx.
+HISTORY_MAX_TURNS = 20
+
 SYSTEM_PROMPT = (
     "You are Jarvis, a voice assistant. Your replies are spoken aloud by a "
     "text-to-speech engine, so answer in plain conversational sentences: "

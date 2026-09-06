@@ -102,6 +102,42 @@ def test_ask_returns_reply_and_keeps_history():
     assert roles == ["system", "user", "assistant", "user"]
 
 
+def test_history_is_bounded_and_system_prompt_survives():
+    # Run three times as many exchanges as the cap. Without trimming this
+    # would grow forever and eventually push the system prompt out of the
+    # context window (Ollama truncates the oldest tokens silently).
+    client = FakeClient()
+    llm = OllamaLLM(client=client)
+    total = config.HISTORY_MAX_TURNS * 3
+
+    for i in range(total):
+        llm.ask(f"question {i}")
+
+    # Bounded: system prompt + at most HISTORY_MAX_TURNS exchanges.
+    assert len(llm._messages) == 1 + 2 * config.HISTORY_MAX_TURNS
+    # The system prompt is never evicted, and stays first.
+    assert llm._messages[0] == {"role": "system", "content": config.SYSTEM_PROMPT}
+    # Newest exchange kept, oldest dropped.
+    contents = [m["content"] for m in llm._messages]
+    assert f"question {total - 1}" in contents
+    assert "question 0" not in contents
+    # Trimming must cut at an exchange boundary: user right after system.
+    assert llm._messages[1]["role"] == "user"
+
+
+def test_request_sent_to_ollama_is_bounded_too():
+    # The list SENT to the client is what counts against num_ctx: at most the
+    # system prompt, the capped history, and the one new question.
+    client = FakeClient()
+    llm = OllamaLLM(client=client)
+
+    for i in range(config.HISTORY_MAX_TURNS * 3):
+        llm.ask(f"question {i}")
+
+    longest_request = max(len(sent) for sent in client.chat_calls)
+    assert longest_request <= 2 + 2 * config.HISTORY_MAX_TURNS
+
+
 def test_num_ctx_is_sent_to_the_client_on_load_and_chat():
     # Ollama silently truncates at its 4096 default unless num_ctx is passed
     # on EVERY call — including the preload, or the GPU check would validate
