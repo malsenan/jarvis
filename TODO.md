@@ -16,29 +16,6 @@
 
 ---
 
-## 1. Bug - `num_ctx` is never set, so Jarvis runs at Ollama's 4096 default
-
-- **How to reproduce**: `jarvis/config.py` sets no `num_ctx` in `OLLAMA_OPTIONS`.
-  Ollama's default context length is 4096. `qwen3:14b` is natively 32,768.
-  Feed it a long input and it truncates silently — no error, just a confident
-  answer about whatever fraction survived.
-- **Why it's first**: blocks the financial-data work (500 CSV rows ≈ 10-12k
-  tokens) and blocks web search (search results alone can exceed 4096).
-- **Implementation ideas**: Add `num_ctx` to `OLLAMA_OPTIONS`. Start at 16384.
-  KV cache for this model is ~160 KiB/token, so 16k ≈ 2.5 GiB on top of the
-  ~9.3 GiB model. 32k ≈ 5.0 GiB, which is tight on a 16 GB card.
-  `OLLAMA_KV_CACHE_TYPE=q8_0` halves it but needs flash attention, which has
-  been patchy on ROCm — test before relying on it.
-- **Validation strategy**: Assert `assert_model_on_gpu()` still passes at the
-  chosen `num_ctx` — raising context grows the KV cache and can push the model
-  off the GPU, which `GPU_MIN_VRAM_FRACTION = 1.0` should catch. Confirm the
-  card is the 16 GB variant with `rocm-smi` first.
-- **Definition of done**: `num_ctx` is set explicitly in config with a comment
-  explaining the VRAM tradeoff; the GPU check passes at that value; a test
-  asserts the option is actually passed to the Ollama client.
-
----
-
 ## 2. Task - Trim conversation history
 
 - **User story**: History is unbounded within a run (already noted in the
@@ -284,6 +261,14 @@
 ---
 
 ## v2.0
+
+**Bugfix - `num_ctx` was never set, so Jarvis ran at Ollama's 4096 default and truncated long input silently**
+- **Bug Cause**: Ollama defaults context to 4096 tokens and drops the oldest input past it with no error. `qwen3:14b` natively supports 32,768. Nothing in `jarvis/` ever passed `num_ctx`.
+- **Implementation**: `OLLAMA_OPTIONS = {"num_ctx": 16384}` in `jarvis/config.py`, passed on both `chat()` in `ask()` AND the preload `generate()` in `load_model()` — num_ctx sizes the KV cache at load time, so the GPU check must validate the same context size real questions use, not a 4096 load that gets swapped on the first ask.
+- **Validation**: Card confirmed as the 16 GiB variant via sysfs (`mem_info_vram_total` = 15.9 GiB; rocm-smi not in PATH). Live check on hardware: model loaded at 16k, `assert_model_on_gpu()` passed at 100% VRAM. Measured all-in load: 13.5 GiB (weights + KV + compute buffers) — above the ticket's 11.8 GiB estimate, leaving ~2.4 GiB headroom; 32k would NOT fit, so `OLLAMA_KV_CACHE_TYPE=q8_0` remains the only route there (untested on ROCm, not needed now). Unit test `test_num_ctx_is_sent_to_the_client_on_load_and_chat` asserts the option reaches both client calls. Fast suite: 29 passed.
+- **Note**: 16384 is provisional until ticket "what model / context do I need" measures real workloads — it may revise this value (cheap: one config line).
+
+---
 
 **Audit - No sensitive data in the repo (now or future); every resource init in jarvis/ and tests/ traced to its release**
 - **Sensitive data findings**: Full git history grepped for key/token/password/private-key patterns — clean; every hit was "token" in the LLM sense. One leak found: the README's example startup output contained the Bluetooth speaker's real MAC address (`bluez_output.E4_58...`). Redacted in the README; note it still exists in the pushed git history (commit ec0f409) — rewriting history for a BT MAC was judged not worth it, revisit if the repo audience widens.

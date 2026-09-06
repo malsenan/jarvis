@@ -87,6 +87,21 @@ OLLAMA_STARTUP_TIMEOUT_SECONDS = 30  # max wait for a server we spawned ourselve
 # unusable latency — the script refuses to run in that state.
 GPU_MIN_VRAM_FRACTION = 1.0
 
+# Options passed to Ollama on every generate/chat call.
+#
+# num_ctx: Ollama's default context is 4096 tokens and it truncates the
+# oldest input SILENTLY past that — no error, just answers based on whatever
+# fraction survived. qwen3:14b natively supports 32,768.
+#
+# The tradeoff is VRAM: the KV cache costs ~160 KiB per token of context.
+# Measured on this 15.9 GiB card (2026-09-05): at 16384 Ollama reports the
+# load as 13.5 GiB all-in (weights + KV cache + compute buffers), 100% in
+# VRAM with ~2.4 GiB headroom. 32768 would add ~2.5 GiB more and not fit.
+# assert_model_on_gpu() catches it if a change here pushes the model off the
+# GPU. The preload in load_model() must use these same options, so the GPU
+# check validates the context size we actually run with.
+OLLAMA_OPTIONS = {"num_ctx": 16384}
+
 SYSTEM_PROMPT = (
     "You are Jarvis, a voice assistant. Your replies are spoken aloud by a "
     "text-to-speech engine, so answer in plain conversational sentences: "

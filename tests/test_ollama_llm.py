@@ -25,11 +25,14 @@ class FakeClient:
         self._ps_models = list(ps_models)
         self._chat_reply = chat_reply
         self.chat_calls = []
+        self.chat_kwargs = []
+        self.generate_kwargs = []
 
     def list(self):
         return SimpleNamespace(models=[])
 
     def generate(self, **kwargs):
+        self.generate_kwargs.append(kwargs)
         return SimpleNamespace(done=True)
 
     def ps(self):
@@ -37,6 +40,7 @@ class FakeClient:
 
     def chat(self, model, messages, **kwargs):
         self.chat_calls.append(list(messages))
+        self.chat_kwargs.append(kwargs)
         return SimpleNamespace(
             message=SimpleNamespace(content=self._chat_reply)
         )
@@ -96,6 +100,20 @@ def test_ask_returns_reply_and_keeps_history():
     sent = client.chat_calls[1]
     roles = [m["role"] for m in sent]
     assert roles == ["system", "user", "assistant", "user"]
+
+
+def test_num_ctx_is_sent_to_the_client_on_load_and_chat():
+    # Ollama silently truncates at its 4096 default unless num_ctx is passed
+    # on EVERY call — including the preload, or the GPU check would validate
+    # a smaller KV cache than real questions use.
+    client = FakeClient()
+    llm = OllamaLLM(client=client)
+
+    llm.load_model()
+    llm.ask("hello")
+
+    assert client.generate_kwargs[0]["options"]["num_ctx"] == config.OLLAMA_OPTIONS["num_ctx"]
+    assert client.chat_kwargs[0]["options"]["num_ctx"] == config.OLLAMA_OPTIONS["num_ctx"]
 
 
 # ------------------------------------------------------------- shutdown

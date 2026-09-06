@@ -74,11 +74,16 @@ class OllamaLLM:
     def load_model(self) -> None:
         """Load the model into memory now, so the first real question is not
         stuck behind a ~10 second model load. An empty prompt tells Ollama
-        "just load it"."""
+        "just load it".
+
+        Passing the same options as ask() matters: num_ctx sets the KV cache
+        size at load time, so the GPU check that follows must see the model
+        loaded with the context size real questions will use."""
         print(f"Loading {config.OLLAMA_MODEL} (this can take a few seconds)...")
         self._client.generate(
             model=config.OLLAMA_MODEL,
             prompt="",
+            options=config.OLLAMA_OPTIONS,
             keep_alive=config.OLLAMA_KEEP_ALIVE,
         )
 
@@ -127,6 +132,7 @@ class OllamaLLM:
             model=config.OLLAMA_MODEL,
             messages=self._messages,
             think=config.OLLAMA_THINK,
+            options=config.OLLAMA_OPTIONS,
             keep_alive=config.OLLAMA_KEEP_ALIVE,
         )
         reply = response.message.content.strip()
