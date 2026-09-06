@@ -45,7 +45,7 @@ so you see the actual microphone and speaker names:
 
 ```
 Microphone: default -> alsa_input.usb-Conference_USB_microphone_ATR4697-USB-00.mono-fallback
-Speaker:    default -> bluez_output.E4_58_BC_C5_09_B2.1
+Speaker:    default -> bluez_output.XX_XX_XX_XX_XX_XX.1
 ```
 
 Devices are matched **by name substring, never by index**, because indices

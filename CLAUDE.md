@@ -72,6 +72,13 @@ in `jarvis/config.py`. Two invariants hold the design together:
 Audio devices are matched **by name substring, never by index** — indices shift
 when USB devices are plugged in or PipeWire restarts.
 
+**No secrets in the repo, ever.** There are none today (audited 2026-09-05)
+and it must stay that way: any credential, API key, or private value a future
+feature needs is read from a gitignored `.env` file, with a safe default in
+`jarvis/config.py` when unset. Never hardcode one in code, tests, or any
+committed file — and remember that real terminal output pasted into docs can
+carry identifiers (device MACs, hostnames); scrub those.
+
 **Anything initialized must be released, always.** Audio streams, the spawned
 `ollama serve` subprocess, files, and models in tests all get a defined
 lifetime: a `with` block, a `try/finally`, or a pytest fixture that yields.
