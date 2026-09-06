@@ -2,7 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## THE MOST IMPORTANT RULE: ASK THE USER QUESTIONS IF ANYTHING IS VAGUE
+## THE THREE MOST IMPORTANT RULES: 
+1) DO NOT OVER-COMPLICATE 
+2) ASK THE USER QUESTIONS IF ANYTHING IS VAGUE 
+3) IF A BETTER DESIGN DECISION EXISTS, SAY SO
 
 ## Project
 
