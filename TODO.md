@@ -25,6 +25,7 @@
   wrong numbers. Test whether feeding it *aggregates* from my existing parsing
   code beats feeding it raw rows — if so, the answer to this ticket is "wrap
   the aggregation as a tool," not "buy more context."
+    - The biggest data file is a file of an aggregation of all data, containing parsed records of date,account,description,amount,balance,net_worth for 2000+ rows (ex: 03/19/2026,checking,AMAZON MKTPL*BD0 03/18 PURCHASE Amzn.com/bill WA,-27.88,1881.53,35029.54). other summary data is a lot smaller. Can't you just create a file of a lot of those and other samples of data and test on that using a strict system prompt passed to the ollama agent to see if it can actually analyze the data?
 - **Definition of done**: a documented ceiling (rows / KB / LOC) I've actually
   measured on my hardware, plus a decision on whether raw data or pre-aggregated
   summaries go into the prompt.
